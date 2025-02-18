@@ -1,0 +1,1 @@
+This is a Node Js windows cron. It's used to fetch order dat from online to local server. It's also has a second cron to query and send customer, product and salesman data to online for the app to query.
