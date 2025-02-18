@@ -28,4 +28,4 @@ const openConnection = () => {
   });
 };
 
-module.exports = { sql, config,openConnection };
+module.exports = {openConnection };

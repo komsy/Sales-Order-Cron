@@ -1,5 +1,4 @@
 require("dotenv").config();
-const moment = require("moment");
 // const axios = require("axios");
 const { openConnection } = require("./dbConfig");
 const  { axios,sendAcknowledgment,sendDataToAPI, sendCustDataToAPI, sendSalesmanDataToAPI,logError } = require("./routes/apiservices");
