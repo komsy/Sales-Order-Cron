@@ -3,9 +3,10 @@ const sql = require("msnodesqlv8");
 
 // Required environment variables
 const ENV_VARS = ["DB_SERVER", "DB_DATABASE", "DB_USERNAME", "DB_PASSWORD",
-                  "LOCATIONID", "APIKEY", "URL", "DELAY_SPEED_A", "DELAY_SPEED_B"];
+                  "LOCATIONID", "URL", "DELAY_SPEED","PORT"];
 
-// Validate environment variables
+// Validate environment variablesSQL Server Native Client 11.0
+//ODBC Driver 17 for SQL Server
 for (const varName of ENV_VARS) {
   if (!process.env[varName]) {
     console.error(`Missing required environment variable: ${varName}`);
