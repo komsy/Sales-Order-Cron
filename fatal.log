@@ -1,0 +1,64 @@
+2026-04-30T12:51:43.522Z - Failed to load saveDataToDatabase
+F:\PROJECTS\Final\local\STK\serverCron\utils\saveDataToDatabase.js:7
+const sendOnline = process.env.SEND_ONLINE;
+      ^
+
+SyntaxError: Identifier 'sendOnline' has already been declared
+    at wrapSafe (node:internal/modules/cjs/loader:1486:18)
+    at Module._compile (node:internal/modules/cjs/loader:1528:20)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Module.require (node:internal/modules/cjs/loader:1311:12)
+    at require (node:internal/modules/helpers:136:16)
+    at Object.<anonymous> (F:\PROJECTS\Final\local\STK\serverCron\routes\saveTransactions.js:10:25)
+2026-04-30T12:51:43.571Z - Failed to load saveDataToDatabase
+F:\PROJECTS\Final\local\STK\serverCron\utils\saveDataToDatabase.js:7
+const sendOnline = process.env.SEND_ONLINE;
+      ^
+
+SyntaxError: Identifier 'sendOnline' has already been declared
+    at wrapSafe (node:internal/modules/cjs/loader:1486:18)
+    at Module._compile (node:internal/modules/cjs/loader:1528:20)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Module.require (node:internal/modules/cjs/loader:1311:12)
+    at require (node:internal/modules/helpers:136:16)
+    at Object.<anonymous> (F:\PROJECTS\Final\local\STK\serverCron\index.js:42:26)
+2026-04-30T12:51:58.388Z - Failed to load saveDataToDatabase
+F:\PROJECTS\Final\local\STK\serverCron\utils\saveDataToDatabase.js:7
+const locationID = process.env.LOCATIONID || ;
+                                             ^
+
+SyntaxError: Unexpected token ';'
+    at wrapSafe (node:internal/modules/cjs/loader:1486:18)
+    at Module._compile (node:internal/modules/cjs/loader:1528:20)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Module.require (node:internal/modules/cjs/loader:1311:12)
+    at require (node:internal/modules/helpers:136:16)
+    at Object.<anonymous> (F:\PROJECTS\Final\local\STK\serverCron\routes\saveTransactions.js:10:25)
+2026-04-30T12:51:58.434Z - Failed to load saveDataToDatabase
+F:\PROJECTS\Final\local\STK\serverCron\utils\saveDataToDatabase.js:7
+const locationID = process.env.LOCATIONID || ;
+                                             ^
+
+SyntaxError: Unexpected token ';'
+    at wrapSafe (node:internal/modules/cjs/loader:1486:18)
+    at Module._compile (node:internal/modules/cjs/loader:1528:20)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Module.require (node:internal/modules/cjs/loader:1311:12)
+    at require (node:internal/modules/helpers:136:16)
+    at Object.<anonymous> (F:\PROJECTS\Final\local\STK\serverCron\index.js:42:26)

@@ -1,26 +1,51 @@
-require("dotenv").config();
+const dotenv = require('dotenv');
+const path = require("path"); // Ensure path is defined before using it
+
+const isPkg = !!process.pkg;
+
+const envPath = isPkg
+  ? path.join(path.dirname(process.execPath), '.env')
+  : path.join(process.cwd(), '.env');
+
+// Load environment variables from that specific path FIRST
+dotenv.config({ path: envPath });
+
+// console.log("ENV PATH:", envPath);
+
+// ----------------------------------------------------------------
+// NOW it is safe to require other modules that use process.env
+// ----------------------------------------------------------------
+
 const express = require("express");
 const http = require("http");
-const path = require("path");
 const fs = require("fs");
-const { openConnection } = require("./dbConfig");
-const app = express();
+const { openConnection } = require("./dbConfig"); // This line moves down
+const app = require('./app');
 const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server, { cors: { origin: "*" }});
+const axios = require("axios");
+
+// These variables will now be correctly populated:
 const delaySpeed = parseInt(process.env.DELAY_SPEED) || 3000;
-const url = process.env.URL || "http://localhost";
-const locationID = process.env.LOCATIONID || "00";
 const PORT = process.env.PORT || 3000;
+const paymentTableName = process.env.PAYMENT_TABLE_NAME || "[dbo].[MpesaTxn]";
+const paymentResultCode = process.env.PAYMENT_RESULT_CODE || -1;
+const isPicked = process.env.IsPicked || 1;
+const apiKey = process.env.APIKEY || "ajIhX5jJcMW0Yiz";
+const fetchOnline= process.env.FETCH_ONLINE || 0;
+const url = process.env.ONLINE_URL;
 
-app.use(express.json());
+// const processStkPush = require("./utils/process_payment");
+let processStkPush;
+let saveDataToDatabase;
 
-// Serve images from that absolute path
-const imagesPath = "C:\\Easy POS System\\TillTvImages"; // or use \\ for Windows paths
-app.use('/images', express.static(imagesPath));
- 
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, "public")));
+try {
+  ( saveDataToDatabase = require("./utils/saveDataToDatabase"),
+    processStkPush = require("./utils/process_payment"));
+  // console.log("fetchData loaded OK");
+} catch (err) {
+  fs.appendFileSync("fatal.log",`${new Date().toISOString()} - Failed to load saveDataToDatabase\n${err.stack}\n` );
+} 
+
 
 // Logs helper
 const logError = (context, error) => {
@@ -32,127 +57,101 @@ const logError = (context, error) => {
    QUERY DATABASE 
 --------------------------------------------------- */
 
+
 const queryFromDatabase = async (conn) => {
-  const tableName = "[dbo].[vwProductMst]";
-  const priceTable = "[dbo].[ProductPackingPrice]";
-  const imageTable = "[dbo].[TillTvImages]";
 
   try {
-    const sql = `SELECT VP.ItmCode, VP.LocationID, GodownName, LongName, Unit, 
-    TaxCode, TaxRate, RspIncVat, WspIncVat, CurrBalance, FixUnitOfSell,ItmActive,TV.ImgPath,TV.TillNo  FROM ${tableName} VP
-     join ${imageTable} TV ON TV.ItmCode=VP.itmcode WHERE VP.LocationID = ?`;
-    //  AND VP.dateEntered >= DATEADD(MINUTE, -2, GETDATE())
-    const products = await new Promise((resolve, reject) => {
-      conn.query(sql, [locationID], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
- 
-    const productData = [];
-    // console.log("Products fetched:", products.length);
-    for (const product of products) {
-      // console.log("Fetching prices for ItmCode:", product.ItmCode);
-      const priceQuery = `SELECT * FROM ${priceTable} WHERE ItmCode = ?`;
+    const sqlMainQuery = `SELECT TillNo,BillNo,BillAmount, PhoneNumber,SeedID  FROM ${paymentTableName}  
+    WHERE ResultCode IS NULL AND IsPicked = 0 AND IsValid = 1 AND TillNo IS NOT NULL AND DateEntered >= CAST(GETDATE() AS DATE)
+    AND DateEntered < DATEADD(day, 1, CAST(GETDATE() AS DATE))`; 
 
-      const prices = await new Promise((resolve, reject) => {
-        conn.query(priceQuery, [product.ItmCode], (err, priceResults) => {
-          if (err) reject(err);
-          else resolve(priceResults);
-        });
-      });
-      // console.log("Prices fetched:", prices.length);
-      const winPath = product.ImgPath;
-      const localImg = winPath.split("\\").pop(); // extract filename
-
-      productData.push({
-        ...product,
-        prices,
-        ImgFile: localImg,
-      });
-    }
-    
-    // console.log("Product data retrieved successfully:", productData);
-    return productData;
-
+    // Use conn.query() with the array of parameters
+    const results = await conn.query(sqlMainQuery); 
+    return results;
   } catch (error) {
     logError("queryFromDatabase", error);
     return [];
   }
 };
 
+
 /* ---------------------------------------------------
-   GROUP BY TILL NO
+    FETCH DATA FROM API 
 --------------------------------------------------- */
-const groupByTill = (data) => {
-  const result = {};
-  data.forEach((p) => {
-    // console.log("Processing product for TillNo:", p.TillNo);
-    const till = p.TillNo || "00";
-    if (!result[till]) result[till] = [];
-    result[till].push(p);
-  });
-  return result;
+const fetchData = async (conn) => {
+  try {
+    const response = await axios.get(`${url}/getData`, {
+      headers: { "api-key": apiKey },
+    });
+    // console.log("Data fetched from API:", response.data);
+    const data = response.data;
+
+    if (Array.isArray(data)) {
+      
+      await saveDataToDatabase(conn, data);
+    } else {
+      console.error("Error: Data from API is not an array");
+    }
+  } catch (error) {
+    const errorMsg =
+      error.code === "ECONNABORTED"
+        ? "Request timeout"
+        : error.code === "ENOTFOUND"
+        ? "Host not found"
+        : error.message;
+
+    logError("fetchData", new Error(errorMsg));
+  }
 };
 
+/*-------------------------END OF FETCH DATA FROM API ----------------------------*/
+
+
 
 /* ---------------------------------------------------
-   CRON - RUN EVERY 2 SECONDS
+   CRON - RUN EVERY 1 SECONDS
 --------------------------------------------------- */
-let lastData = ""; // This variable holds the latest grouped product data (serialized string)
-let currentGroupedData = {}; // Store the actual object data too
-
 const startCronJob = async () => {
   try {
     const conn = await openConnection();
-    console.log("Connected to SQL Server");
+    //console.log("Connected to SQL Server");
 
     const runTask = async () => {
       try {
-        const products = await queryFromDatabase(conn);
-        // console.log("Products fetched for cron task:", products.length);
-        const grouped = groupByTill(products);
-        currentGroupedData = grouped; // Store the object
-
-        const serialized = JSON.stringify(grouped);
-
-        if (serialized !== lastData) {
-          lastData = serialized;
-          // Use io.emit() here to broadcast ONLY when it changes
-          io.emit("updateProducts", grouped); 
-          // console.log("New products broadcasted to display screen.");
+        
+        //Query online safaricom integration
+        if (fetchOnline==1) { 
+          // Initial call
+          await fetchData(conn);
         }
-        // console.log("Emitting updateProducts =>", grouped);
+        const results = await queryFromDatabase(conn);
+        // console.log(`Found ${results.length} records to process.`);
+
+        for (const data of results) {
+          // console.log("Processing data:", data);
+          await conn.query(
+            `UPDATE ${paymentTableName} SET ResultCode = ?, IsPicked = ? WHERE SeedID = ?
+             AND DateEntered >= CAST(GETDATE() AS DATE) AND DateEntered < DATEADD(day, 1, CAST(GETDATE() AS DATE))`,
+            [paymentResultCode,isPicked,data.SeedID]
+          );
+
+        await processStkPush(conn, data);
+        }
       } catch (error) {
         logError("CronTask", error);
       }
-
-      // Repeat every 2 seconds
-      setTimeout(runTask, delaySpeed);
     };
 
-    // Start the cron loop
-    runTask(); 
+    // KEEP PROCESS ALIVE
+    await runTask();
+    setInterval(runTask, delaySpeed);   
 
-
-    // --- Add a connection listener ---
-    io.on('connection', (socket) => {
-        // console.log(`A user connected: ${socket.id}`);
-        // When a new client connects, immediately send the last known data state.
-        if (currentGroupedData && Object.keys(currentGroupedData).length > 0) {
-            socket.emit("updateProducts", currentGroupedData);
-            // console.log(`Sent initial data to new connection: ${socket.id}`);
-        }
-    });
-    // ----------------------------------------
-
-   // Clean shutdown
     process.on("SIGINT", async () => {
       await conn.close();
       console.log("Database connection closed.");
       process.exit(0);
     });
-    
+
   } catch (error) {
     logError("startCronJob", error);
   }
@@ -160,17 +159,7 @@ const startCronJob = async () => {
 
 startCronJob();
 
-/* ---------------------------------------------------
-   ROUTES
---------------------------------------------------- */
-
-// Display screen page
-app.get("/display", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "display.html"));
-});
-
-// Start Server
-server.listen(PORT, () => {
-  // console.log("Server running at " + url + ":" + PORT);
-  console.log("Open the display page at " + url + ":" + PORT + "/display");
+// start server to listen for stk push
+server.listen(PORT, '0.0.0.0',() => {
+    console.log(`Application running on port ${PORT} and Connected to SQL Server`)
 });
